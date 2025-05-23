@@ -62,3 +62,36 @@ resource "aws_lb_target_group_attachment" "this" {
   port             = each.value.target.port
 }
 
+locals {
+  listener_rules = {
+    for rule in flatten([
+      for listener_idx, listener in var.listeners :
+      [
+        for rule in lookup(listener, "rules", []) : {
+          listener_idx = listener_idx
+          rule         = rule
+        }
+      ]
+    ]) : "${rule.listener_idx}-${rule.rule.priority}" => rule
+  }
+}
+
+resource "aws_lb_listener_rule" "this" {
+  for_each = local.listener_rules
+
+  listener_arn = aws_lb_listener.this[each.value.listener_idx].arn
+  priority     = each.value.rule.priority
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.this[each.value.rule.target_group_key].arn
+  }
+
+  condition {
+    path_pattern {
+      values = each.value.rule.path_patterns
+    }
+  }
+}
+
+

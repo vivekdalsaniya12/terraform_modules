@@ -27,6 +27,11 @@ variable "listeners" {
       type             = string
       target_group_key = string
     })
+    rules = optional(list(object({
+      priority = number
+      path_patterns = list(string)
+      target_group_key = string
+    })),[])
   }))
 }
 
